@@ -7,19 +7,16 @@ import matplotlib.pyplot as plt
 from matplotlib import animation, rc
 from IPython.display import HTML
 
-# Configuração para exibir animações no Colab
 rc('animation', html='jshtml')
 
-# --- CONFIGURAÇÃO DO MAPA ---
 MAP_SIZE = 100
 track_map = np.zeros((MAP_SIZE, MAP_SIZE))
 track_map[0, :] = 1
 track_map[-1, :] = 1
 track_map[:, 0] = 1
 track_map[:, -1] = 1
-track_map[30:70, 30:70] = 1  # Obstáculo central
+track_map[30:70, 30:70] = 1
 
-# --- CLASSE DO CARRO (COM HISTÓRICO) ---
 class Car:
     def __init__(self):
         self.x = 15.0
@@ -61,7 +58,6 @@ class Car:
             track_map[int(self.x), int(self.y)] == 1):
             self.alive = False
 
-# --- LÓGICA FUZZY (Igual ao anterior) ---
 def create_fuzzy_system():
     s_left = ctrl.Antecedent(np.arange(0, 101, 1), 's_left')
     s_front = ctrl.Antecedent(np.arange(0, 101, 1), 's_front')
@@ -73,14 +69,12 @@ def create_fuzzy_system():
     direction.automf(names=['me', 'e', 'c', 'd', 'md'])
     return s_left, s_front, s_right, direction
 
-# --- FUNÇÃO DE FITNESS ---
 def fitness_func(ga_instance, solution, solution_idx):
     s_left, s_front, s_right, direction = create_fuzzy_system()
     terms_in = ['mp', 'p', 'm', 'l', 'ml']
     terms_out = ['me', 'e', 'c', 'd', 'md']
     rule_list = []
 
-    # Decodifica genoma - AGORA INCLUI S_RIGHT
     cnt = 0
     for t1 in terms_in:
         for t2 in terms_in:
@@ -99,7 +93,6 @@ def fitness_func(ga_instance, solution, solution_idx):
 
     car = Car()
     steps = 0
-    # Aumentei os passos para dar tempo de ver o carro andar
     while car.alive and steps < 200:
         sensors = car.get_sensors()
         driver.input['s_left'] = sensors[1]
@@ -114,12 +107,11 @@ def fitness_func(ga_instance, solution, solution_idx):
 
     return steps
 
-# --- EXECUÇÃO DO GA ---
-ga_instance = pygad.GA(num_generations=10, # Poucas gerações para teste rápido
+ga_instance = pygad.GA(num_generations=10,
                        num_parents_mating=2,
                        fitness_func=fitness_func,
                        sol_per_pop=5,
-                       num_genes=125, # Aumentado para 5*5*5 para incluir s_right
+                       num_genes=125,
                        gene_type=int,
                        init_range_low=0,
                        init_range_high=4,
@@ -128,16 +120,12 @@ ga_instance = pygad.GA(num_generations=10, # Poucas gerações para teste rápid
 print("Evoluindo... Aguarde.")
 ga_instance.run()
 
-# --- VISUALIZAÇÃO 1: GRÁFICO DE APRENDIZADO ---
 print("1. Evolução da Aptidão (Fitness):")
 ga_instance.plot_fitness()
 
-# --- VISUALIZAÇÃO 2: ANIMAÇÃO DO MELHOR CARRO ---
 print("2. Gerando Animação do Melhor Indivíduo...")
 solution, solution_fitness, _ = ga_instance.best_solution()
 
-# Rodar simulação novamente com o melhor genoma para pegar o histórico
-# (Re-executamos a lógica interna da fitness_func apenas para gravar o trajeto)
 best_car = Car()
 s_left, s_front, s_right, direction = create_fuzzy_system()
 terms_in = ['mp', 'p', 'm', 'l', 'ml']
@@ -146,7 +134,7 @@ rule_list = []
 cnt = 0
 for t1 in terms_in:
     for t2 in terms_in:
-        for t3 in terms_in: # AGORA INCLUI S_RIGHT
+        for t3 in terms_in:
             if cnt >= len(solution): break
             output_idx = int(solution[cnt])
             rule = ctrl.Rule(s_left[t1] & s_front[t2] & s_right[t3], direction[terms_out[output_idx]])
@@ -155,7 +143,7 @@ for t1 in terms_in:
 driver_ctrl = ctrl.ControlSystem(rule_list)
 sim = ctrl.ControlSystemSimulation(driver_ctrl)
 
-for _ in range(300): # Simular até 300 passos
+for _ in range(300):
     if not best_car.alive: break
     sens = best_car.get_sensors()
     sim.input['s_left'] = sens[1]
@@ -167,11 +155,9 @@ for _ in range(300): # Simular até 300 passos
     except: st = 0
     best_car.move(st)
 
-# Criar animação
 fig, ax = plt.subplots(figsize=(6,6))
 ax.set_xlim(0, MAP_SIZE)
 ax.set_ylim(0, MAP_SIZE)
-# Desenhar mapa
 ax.imshow(track_map.T, cmap='Greys', origin='lower', extent=[0, MAP_SIZE, 0, MAP_SIZE])
 line, = ax.plot([], [], 'r-', lw=2, label='Trajeto')
 point, = ax.plot([], [], 'bo', ms=5, label='Carro')
